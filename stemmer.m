@@ -4,8 +4,9 @@ if ~exist('url', 'var') || isempty(url), url = ...
     sprintf('http://dictionary.reference.com/browse/'); end
 if ~exist('strData', 'var') || isempty(strData), strData = {'eat'}; end
 if ~exist('stemDict', 'var') || isempty(stemDict), stemDict = {'',''}; end
+if ~exist('iterNo', 'var') || isempty(iterNo), iterNo = 0; end
 
-baseDir = 'C:\Temp\CSE_5243\';
+baseDir = 'C:\Temp\SpotOn\';
 dictPart1 = stemDict;
 isTerminate = 0;
 
@@ -18,7 +19,7 @@ for i=1:length(stemDict)
         strData{i} = char(dictPart1(min(find(strcmp(dictPart1(:,1), strData{i}))),2));
         continue;
     elseif ~isempty(find(strcmp(stemDict(:,1), strData{i})))
-        strData{i} = char(dictPart1(min(find(strcmp(stemDict(:,1), strData{i}))),2));
+        strData{i} = char(stemDict(min(find(strcmp(stemDict(:,1), strData{i}))),2));
         continue;
     end
     
@@ -78,7 +79,7 @@ if (~isempty(dictPart1))
     stemDict(all(emptyCells,2),:) = [];
 end
 
-if mod(iterNo, 10)==0
+if mod(iterNo, 10)==0 && iterNo>0
     sd = stemDict;
     [~,idx]=unique(strcat(sd(:,1),sd(:,2)), 'rows');
     stemDict = sd(idx,:);
