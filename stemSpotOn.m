@@ -1,12 +1,12 @@
-function [strData, stemDict] = stemmer(url, strData, iterNo, stemDict)
+function [strData, stemDict] = stemmer(baseDir, url, strData, iterNo, stemDict)
 
+if ~exist('baseDir', 'var') || isempty(baseDir), baseDir = 'C:\Temp\SpotOn\'; end
 if ~exist('url', 'var') || isempty(url), url = ...
     sprintf('http://dictionary.reference.com/browse/'); end
 if ~exist('strData', 'var') || isempty(strData), strData = {'eat'}; end
 if ~exist('stemDict', 'var') || isempty(stemDict), stemDict = {'',''}; end
 if ~exist('iterNo', 'var') || isempty(iterNo), iterNo = 0; end
 
-baseDir = 'C:\Temp\SpotOn\';
 dictPart1 = stemDict;
 isTerminate = 0;
 

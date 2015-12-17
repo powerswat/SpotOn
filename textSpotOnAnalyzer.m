@@ -12,79 +12,65 @@ if exist([baseDir, 'stemDictionary.mat'], 'file')
     load([baseDir, 'stemDictionary.mat']);
     isDictComplete = 1;
 end
+is_word_corret = 0;
+if exist([baseDir, 'words_proc.txt'], 'file')
+    disp('Load existing pre-processed word result');
+    file_id = fopen([baseDir, 'words_proc.txt'], 'r');
+    tmp_spcDict = textscan(file_id, '%s', 'Delimit  er', '\t');
+    for i=1:length(tmp_spcDict{1})
+        tmp_spcDict{1}(i) = strtrim(tmp_spcDict{1}(i));
+    end
+    len_spcDict = floor(length(tmp_spcDict{1})/2);
+    orig_idcs = [1:2:len_spcDict*2]';
+    crrct_idcs = [2:2:len_spcDict*2]';
+    spcDict = cell(len_spcDict, 2);
+    spcDict(:,1) = tmp_spcDict{1}(orig_idcs);
+    spcDict(:,2) = tmp_spcDict{1}(crrct_idcs);
+    [~,uniq_row] = unique(spcDict(:,1));
+    spcDict = spcDict(uniq_row,:);
+    fclose(file_id);
+    
+    disp('Load the term data that will be corrected');
+    load([baseDir, 'word_terms.mat']);
+    
+    is_word_correct = 1;
+else
+    
+end
 
 %% Read the given xls file
 [num,rawStr,raw] = xlsread([inputDir, dataXls]);
 
-%% Retrieve the review table data
-
-% Convert the string matrix to a vector
-while true
-    rawStr = reshape(rawStr, size(rawStr,1)*size(rawStr,2), 1);
-    rawStr = strrep(rawStr, '&nbsp;', '');
-    stBrkIdccs = strfind(rawStr,'<');
-    edBrkIdccs = strfind(rawStr,'>');
-    
-    if length(find(~cellfun(@isempty, stBrkIdccs)))==0
-        break;
+%% Retrieve the review table data (Text preprocessing)
+if is_word_correct == 0
+    [words, termsData] = spotOnTxtPreProc(rawStr);
+    file_id = fopen([baseDir, 'words.txt'], 'w');
+    for i=1:size(words,1)
+        fprintf(file_id, '%s\r\n', words{i});
     end
-
-    % Remove all the tag information surrounded by < >
-    for i=1:length(rawStr)
-        if ~isempty(stBrkIdccs{i})
-            if length(stBrkIdccs{i}) > length(edBrkIdccs{i}) && 1 == length(stBrkIdccs{i})
-                rawStr{i}(stBrkIdccs{i}(1):end) = [];
-            else
-                rawStr{i}(stBrkIdccs{i}(1):edBrkIdccs{i}(1)) = [];
-            end 
-        end
-    end
-end
-
-% Extract every word from the set of textual information
-termsData = cell(length(rawStr),1);
-for i=1:length(rawStr)
-    if ~isempty(strfind(rawStr{i}, '@')) || isempty(rawStr{i})
-        continue;
-    end
-    
-    termsData{i} = lower(strread(rawStr{i}, '%s', 'delimiter', ' "-*,&.:/;!'));
-    txtOnlyIdcs = find(~cellfun(@isempty, regexp(termsData{i}, '[A-z,a-z]')));
-    termsData{i} = termsData{i}(txtOnlyIdcs, :);
-end
-not_empty_idcs = find(~cellfun(@isempty, termsData));
-termsData = termsData(not_empty_idcs, :);
-
-
-num_word = sum(cellfun(@length, termsData));
-words = cell(num_word,1);
-cnt = 1;
-for i=1:length(termsData)
-    for j=1:length(termsData(i))
-        words{cnt} = char(termsData{i}(j));
-    end
-    cnt = cnt + 1;
-end
-
-keep_idcs = find(~cellfun(@isempty, words));
-words = strtrim(unique(words(keep_idcs)));
-
-for i=1:length(words)
-    alphaOnly = regexp(words{i}, '[A-Z,a-z]');
-    if length(alphaOnly)< length(words{i})
-        words{i} = words{i}(alphaOnly);
-    end
+    fclose(file_id);
+    save([baseDir 'word_terms.mat'], 'words', 'termsData');
+else
+    [words, termsData] = spaceCorrection(spcDict, words, termsData);
 end
 
 %% Stemming the collected words
 if isDictComplete == 0
-    [words, stemDict] = stemmer('', words, 10);
-end
-for i=1:length(words)
-    idx = find(strcmp(stemDict(:,1), words{i}));
-    words{i} = stemDict{idx,2};
+    [~, stemDict] = stemSpotOn(baseDir, '', words, 10);
 end
 
-% 
+% Convert all the terms to be stemmed
+for i=1:length(termsData)
+    for j=1:length(termsData{i})
+       dict_idx = find(strcmp(stemDict(:,1), termsData{i}(j)));
+        if ~isempty(dict_idx)
+           termsData{i}(j) = stemDict(dict_idx,2);
+        end
+    end
+end
+
+%% Calculate TFIDF values for all the terms
+[TFIDF_mat] = TFIDFCalc(baseDir, termsData);
+% save([baseDir 'TFIDF_mat.mat'], 'TFIDF_mat');
 
 a = 1;
